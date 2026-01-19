@@ -11,6 +11,7 @@ help:
 
 html:
 	$(BUILDCMD)
+	cp *.html $(BUILDDIR)/html/
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
 
