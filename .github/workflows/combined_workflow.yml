@@ -26,14 +26,28 @@ jobs:
       with:
         python-version: "3.9"
 
+    - name: Cache pip dependencies
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/setup.py', '**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
     - name: Install System and Python Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y poppler-utils
+        sudo apt-get install -y poppler-utils rsync
         pip install --upgrade pip
         pip install --upgrade ipython ipykernel
         ipython kernel install --name "python3" --user
         pip install ".[docs]"
+
+    - name: Cache Sphinx build
+      uses: actions/cache@v2
+      with:
+        path: docs/_build
+        key: ${{ runner.os }}-sphinx-${{ hashFiles('docs/**/*.ipynb', 'docs/**/*.html') }}
 
     - name: Build Docs
       working-directory: ./docs
@@ -54,12 +68,10 @@ jobs:
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
       working-directory: ./docs
       run: |
-        echo "# last log :🪵" >> $GITHUB_STEP_SUMMARY  
-        cat "$(git ls-files ./_build/html/logs/log-*.md | tail -n 1)" >> $GITHUB_STEP_SUMMARY
+        echo "# last log :🪵" >> $GITHUB_STEP_SUMMARY
+        cat "$(find ./_build/html/logs -name 'log-*.md' | sort | tail -n 1)" >> $GITHUB_STEP_SUMMARY
         echo "## new outputs! :rocket:" >> $GITHUB_STEP_SUMMARY
-        echo "$(git ls-files -mo "*md")" >> $GITHUB_STEP_SUMMARY
-        echo "## new files! :rocket:" >> $GITHUB_STEP_SUMMARY
-        echo "$(git ls-files -mo)" >> $GITHUB_STEP_SUMMARY
+        git status --porcelain docs/_build/html/ | grep '^.M' | sed 's/^.M //' >> $GITHUB_STEP_SUMMARY || echo "No modified files."
 
     - name: Commit logs and build files to main branch
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -68,7 +80,11 @@ jobs:
         git config --local user.name "GitHub Action"
         git add docs/log.ipynb
         git add docs/_build/html/
-        git commit -m "chore: update daily logs and build files [ci skip]" -a || echo "No changes to commit"
+        if git diff --staged --quiet; then
+          echo "No changes to commit to main branch."
+        else
+          git commit -m "chore: update daily logs and build files [ci skip]"
+        fi
 
     - name: Push log and build changes to main branch
       if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -78,15 +94,32 @@ jobs:
         branch: main
         force: true
 
-    - name: Deploy to GitHub Pages
+    - name: Incremental Deploy to GitHub Pages
       if: |
         github.event_name == 'push' && github.ref == 'refs/heads/main' ||
         github.event_name == 'schedule' ||
         github.event_name == 'workflow_dispatch'
-      uses: peaceiris/actions-gh-pages@v3
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        publish_dir: ./docs/_build/html
-        force_orphan: true
-        user_name: 'github-actions[bot]'
-        user_email: 'github-actions[bot]@users.noreply.github.com'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        # Configure git
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git config --global user.name "github-actions[bot]"
+
+        # Clone the gh-pages branch into a local directory
+        git clone "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" --branch gh-pages --single-branch gh-pages
+
+        # Use rsync to incrementally update the gh-pages directory
+        # --delete will remove files in gh-pages that are no longer in the build output
+        rsync -av --delete --exclude='.git' docs/_build/html/ gh-pages/
+
+        # Check for changes and deploy
+        cd gh-pages
+        if [ -z "$(git status --porcelain)" ]; then
+          echo "No changes to deploy."
+          exit 0
+        fi
+
+        git add .
+        git commit -m "docs: incremental update of daily digest"
+        git push origin gh-pages
