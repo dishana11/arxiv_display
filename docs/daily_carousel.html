@@ -178,69 +178,88 @@
             }
 
             async init() {
-                // Create slide divs
+                if (this.docs.length === 0) {
+                    this.container.html("<p>No papers to display today.</p>");
+                    return;
+                }
+
                 for (let i = 0; i < this.docs.length; i++) {
-                    const slide = $(\`<div class="paper-box" id="slide-${i}"></div>\`);
+                    const slide = $('<div class="paper-box" id="slide-' + i + '"></div>');
                     this.container.append(slide);
                     this.slides.push(slide);
                 }
 
-                // Setup navigation
                 $('.carousel-btn-next').on('click', () => this.next());
                 $('.carousel-btn-prev').on('click', () => this.prev());
 
-                // Load initial slide
-                if (this.docs.length > 0) {
-                    await this.loadSlide(this.currentIndex);
-                } else {
-                    this.container.html("<p>No papers to display today.</p>");
+                await this.showSlide(this.currentIndex);
+            }
+
+            async fetchAndPrepareSlide(index) {
+                const slide = this.slides[index];
+                if (slide.data('loaded') === true || slide.data('loaded') === 'loading') {
+                    return;
+                }
+                slide.data('loaded', 'loading');
+
+                try {
+                    const docUrl = this.docs[index];
+                    const response = await fetch(docUrl);
+                    if (!response.ok) throw new Error(`Failed to fetch ${docUrl}`);
+                    const text = await response.text();
+                    slide.html(marked.parse(text));
+                    slide.data('loaded', true);
+                } catch (error) {
+                    console.error("Error loading paper:", error);
+                    slide.html("<p>Could not load this paper. Please try again later.</p>");
+                    slide.data('loaded', 'error');
                 }
             }
 
-            async loadSlide(index) {
+            async showSlide(index) {
                 if (index < 0 || index >= this.docs.length) {
                     return;
                 }
+
+                const slideToDisplay = this.slides[index];
+                while(slideToDisplay.data('loaded') === 'loading') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
                 
-                // Deactivate current slide
+                if (slideToDisplay.data('loaded') !== true) {
+                    await this.fetchAndPrepareSlide(index);
+                }
+
                 if (this.slides[this.currentIndex]) {
                     this.slides[this.currentIndex].removeClass('active');
                 }
-
-                const slide = this.slides[index];
-                const docUrl = this.docs[index];
-                this.currentIndex = index;
-
-                // Load markdown if not already loaded
-                if (slide.data('loaded') !== true) {
-                    try {
-                        const response = await fetch(docUrl);
-                        if (!response.ok) throw new Error(`Failed to fetch ${docUrl}`);
-                        const text = await response.text();
-                        slide.html(marked.parse(text));
-                        slide.data('loaded', true);
-                    } catch (error) {
-                        console.error("Error loading paper:", error);
-                        slide.html("<p>Could not load this paper. Please try again later.</p>");
-                    }
-                }
                 
-                // Activate the new slide
-                slide.addClass('active');
+                this.currentIndex = index;
+                slideToDisplay.addClass('active');
 
-                // Render math and code
                 this.renderContent();
+                this.preloadAdjacent();
+            }
+
+            preloadAdjacent() {
+                const nextIndex = (this.currentIndex + 1) % this.docs.length;
+                if (nextIndex !== this.currentIndex) {
+                    this.fetchAndPrepareSlide(nextIndex);
+                }
+
+                const prevIndex = (this.currentIndex - 1 + this.docs.length) % this.docs.length;
+                if (prevIndex !== this.currentIndex) {
+                    this.fetchAndPrepareSlide(prevIndex);
+                }
             }
 
             renderContent() {
-                // Highlight code blocks
                 if (typeof hljs !== 'undefined') {
                     this.slides[this.currentIndex].find('pre code').each((i, block) => {
                         hljs.highlightElement(block);
                     });
                 }
 
-                // Typeset MathJax
                 if (window.MathJax) {
                     MathJax.typesetPromise([this.slides[this.currentIndex][0]])
                         .catch((err) => console.log('Typeset failed: ' + err.message));
@@ -249,16 +268,15 @@
 
             next() {
                 const nextIndex = (this.currentIndex + 1) % this.docs.length;
-                this.loadSlide(nextIndex);
+                this.showSlide(nextIndex);
             }
 
             prev() {
                 const prevIndex = (this.currentIndex - 1 + this.docs.length) % this.docs.length;
-                this.loadSlide(prevIndex);
+                this.showSlide(prevIndex);
             }
         }
 
-        // Run the carousel
         $(document).ready(async () => {
             const carousel = new PaperCarousel('#carousel-slides', docs);
             await carousel.init();
