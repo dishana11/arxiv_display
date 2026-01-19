@@ -1,0 +1,92 @@
+
+name: Combined Daily Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    # Runs at 04:00 UTC on every day-of-week from Monday to Friday.
+    - cron: '0 4 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+      with:
+        # We need to fetch all history for the commit steps
+        fetch-depth: 0
+
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.9"
+
+    - name: Install System and Python Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y poppler-utils
+        pip install --upgrade pip
+        pip install --upgrade ipython ipykernel
+        ipython kernel install --name "python3" --user
+        pip install ".[docs]"
+
+    - name: Build Docs
+      working-directory: ./docs
+      run: make html
+
+    - name: Cleanup old summaries (>3 months)
+      if: |
+        github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch'
+      run: |
+        python cleanup_old_summaries.py --force --days 90
+        echo "Cleanup completed. Remaining files:" >> $GITHUB_STEP_SUMMARY
+        echo "- $(find docs/_build/html -name '*.md' | wc -l) markdown files" >> $GITHUB_STEP_SUMMARY
+        echo "- $(du -sh docs/_build/html | cut -f1) total size" >> $GITHUB_STEP_SUMMARY
+
+    - name: Create Change Summary for Logs
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      working-directory: ./docs
+      run: |
+        echo "# last log :🪵" >> $GITHUB_STEP_SUMMARY  
+        cat "$(git ls-files ./_build/html/logs/log-*.md | tail -n 1)" >> $GITHUB_STEP_SUMMARY
+        echo "## new outputs! :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "$(git ls-files -mo "*md")" >> $GITHUB_STEP_SUMMARY
+        echo "## new files! :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "$(git ls-files -mo)" >> $GITHUB_STEP_SUMMARY
+
+    - name: Commit logs and build files to main branch
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/log.ipynb
+        git add docs/_build/html/
+        git commit -m "chore: update daily logs and build files [ci skip]" -a || echo "No changes to commit"
+
+    - name: Push log and build changes to main branch
+      if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: main
+        force: true
+
+    - name: Deploy to GitHub Pages
+      if: |
+        github.event_name == 'push' && github.ref == 'refs/heads/main' ||
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch'
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./docs/_build/html
+        force_orphan: true
+        user_name: 'github-actions[bot]'
+        user_email: 'github-actions[bot]@users.noreply.github.com'
