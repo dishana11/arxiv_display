@@ -138,7 +138,7 @@
     <div id="header">
         <img src="header_banner.png" width="100%">
     </div>
-    <div id="suptitle">7-day archives</div>
+    <div id="suptitle">{%-- suptitle:s --%}</div>
     <div id="info">
         <img src="https://pngimg.com/uploads/github/github_PNG58.png">
         <a href="https://github.com/mpi-astronomy/arxiv_display" style="color:black;">github/mpi-astronomy/arxiv_display</a>
@@ -167,7 +167,7 @@
 
     <!-- Custom Carousel and Content Loading Logic -->
     <script>
-        const docs = ["2601.10795.md", "2601.11127.md", "2601.11469.md", "2601.10631.md", "2601.09778.md", "2601.08903.md", "2601.07925.md", "2601.08087.md", "2601.07414.md", "2601.07407.md", "2601.07784.md", "2601.07785.md"];
+        const docs = [{%-- docs:s --%}];
         
         class PaperCarousel {
             constructor(containerId, docsList) {

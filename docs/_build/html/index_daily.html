@@ -1,79 +1,287 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Remove caching as much as possible -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MPIA Arxiv on deck!</title>
+    <!-- Remove caching -->
     <meta http-equiv="cache-control" content="no-cache" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="-1" />
-    <!-- flickity bootstrap CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/flickity@2/dist/flickity.min.css">
-    <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
-    <!-- highlight.js CSS -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.1.0/styles/default.min.css">
-    <!-- flickity local CSS -->
-    <link rel="stylesheet" href="flickity.css">
-    <!-- markdown local CSS -->
+    
+    <!-- Bootstrap for basic styling -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- highlight.js for code blocks -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/styles/atom-one-dark.min.css">
+    
+    <!-- Local CSS for carousel and paper styles -->
     <link rel="stylesheet" href="markdown.css">
 
-    <link rel="icon" type="image/x-icon"
-        href="https://www.mpia.de/assets/touch-icon-32x32-a66937bcebc4e8894ebff1f41a366c7c7220fd97a38869ee0f2db65a9f59b6c1.png">
-    <title>MPIA Arxiv on deck!</title>
-</head>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            background-color: #f4f4f9;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+        }
+        #header {
+            width: 100%;
+            text-align: center;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #ddd;
+        }
+        #header img {
+            max-width: 100%;
+            height: auto;
+        }
+        #suptitle {
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 300;
+            color: #555;
+            padding: 1rem 0;
+        }
+        #info {
+            text-align: center;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        #info img {
+            height: 24px;
+        }
 
+        /* Carousel container */
+        .carousel-container {
+            position: relative;
+            width: 90%;
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-grow: 1;
+            min-height: 0;
+        }
+
+        #carousel-slides {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The main paper box */
+        .paper-box {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Make content scrollable */
+            width: 100%;
+            max-height: 100%;
+            padding: 2rem 2.5rem;
+            display: none; /* Hidden by default */
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+        .paper-box.active {
+            display: block;
+            opacity: 1;
+        }
+
+        /* Navigation buttons */
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(0,0,0,0.25);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 45px;
+            height: 45px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            z-index: 100;
+        }
+        .carousel-btn:hover {
+            background-color: rgba(0,0,0,0.5);
+        }
+        .carousel-btn-prev {
+            left: -60px;
+        }
+        .carousel-btn-next {
+            right: -60px;
+        }
+        @media (max-width: 960px) {
+            .carousel-btn-prev { left: -10px; }
+            .carousel-btn-next { right: -10px; }
+            .carousel-container { width: 95%; }
+            .paper-box { padding: 1.5rem; }
+        }
+    </style>
+
+    <link rel="icon" type="image/x-icon" href="https://www.mpia.de/assets/touch-icon-32x32-a66937bcebc4e8894ebff1f41a366c7c7220fd97a38869ee0f2db65a9f59b6c1.png">
+</head>
 <body>
-    <div id="header"> <img src="header_banner.png" width="100%"></div>
-    <div id="suptitle"> Daily </div>
+
+    <div id="header">
+        <img src="header_banner.png" width="100%">
+    </div>
+    <div id="suptitle">Daily</div>
     <div id="info">
-        <img src="https://pngimg.com/uploads/github/github_PNG58.png" height=30rem></img>
-        <a href=https://github.com/mpi-astronomy/arxiv_display style="color:black;">github/mpi-astronomy/arxiv_display</a>
+        <img src="https://pngimg.com/uploads/github/github_PNG58.png">
+        <a href="https://github.com/mpi-astronomy/arxiv_display" style="color:black;">github/mpi-astronomy/arxiv_display</a>
     </div>
 
-    <!-- Flickity HTML init -->
-      <div class="carousel" 
-       data-flickity='{ "autoPlay": 10000, "adaptiveHeight": true, "resize": true, "wrapAround": true, "pauseAutoPlayOnHover": true, "groupCells": 1 }' id="asyncTypeset">
-    <div class="carousel-cell"> <div id="slide1" class="md_view">Content 1</div> </div>
-    <div class="carousel-cell"> <div id="slide2" class="md_view">Content 2</div> </div>
-    <div class="carousel-cell"> <div id="slide3" class="md_view">Content 3</div> </div>
-  </div>
+    <div class="carousel-container">
+        <button class="carousel-btn carousel-btn-prev">&lt;</button>
+        
+        <div id="carousel-slides">
+            <!-- Paper slides will be injected here by JavaScript -->
+        </div>
+
+        <button class="carousel-btn carousel-btn-next">&gt;</button>
+    </div>
+
+    <!-- JQuery and Marked.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <!-- highlight.js for code blocks -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
+
+    <!-- MathJax 3 -->
+    <script type="text/javascript" id="MathJax-config" src="mathjax_config.js"></script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+
+    <!-- Custom Carousel and Content Loading Logic -->
+    <script>
+        const docs = ["2601.10795.md", "2601.11127.md", "2601.11469.md"];
+        
+        class PaperCarousel {
+            constructor(containerId, docsList) {
+                this.container = $(containerId);
+                this.docs = docsList;
+                this.currentIndex = 0;
+                this.slides = [];
+            }
+
+            async init() {
+                if (this.docs.length === 0) {
+                    this.container.html("<p>No papers to display today.</p>");
+                    return;
+                }
+
+                for (let i = 0; i < this.docs.length; i++) {
+                    const slide = $('<div class="paper-box" id="slide-' + i + '"></div>');
+                    this.container.append(slide);
+                    this.slides.push(slide);
+                }
+
+                $('.carousel-btn-next').on('click', () => this.next());
+                $('.carousel-btn-prev').on('click', () => this.prev());
+
+                await this.showSlide(this.currentIndex);
+            }
+
+            async fetchAndPrepareSlide(index) {
+                const slide = this.slides[index];
+                if (slide.data('loaded') === true || slide.data('loaded') === 'loading') {
+                    return;
+                }
+                slide.data('loaded', 'loading');
+
+                try {
+                    const docUrl = this.docs[index];
+                    const response = await fetch(docUrl);
+                    if (!response.ok) throw new Error(`Failed to fetch ${docUrl}`);
+                    const text = await response.text();
+                    slide.html(marked.parse(text));
+                    slide.data('loaded', true);
+                } catch (error) {
+                    console.error("Error loading paper:", error);
+                    slide.html("<p>Could not load this paper. Please try again later.</p>");
+                    slide.data('loaded', 'error');
+                }
+            }
+
+            async showSlide(index) {
+                if (index < 0 || index >= this.docs.length) {
+                    return;
+                }
+
+                const slideToDisplay = this.slides[index];
+                while(slideToDisplay.data('loaded') === 'loading') {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+                
+                if (slideToDisplay.data('loaded') !== true) {
+                    await this.fetchAndPrepareSlide(index);
+                }
+
+                if (this.slides[this.currentIndex]) {
+                    this.slides[this.currentIndex].removeClass('active');
+                }
+                
+                this.currentIndex = index;
+                slideToDisplay.addClass('active');
+
+                this.renderContent();
+                this.preloadAdjacent();
+            }
+
+            preloadAdjacent() {
+                const nextIndex = (this.currentIndex + 1) % this.docs.length;
+                if (nextIndex !== this.currentIndex) {
+                    this.fetchAndPrepareSlide(nextIndex);
+                }
+
+                const prevIndex = (this.currentIndex - 1 + this.docs.length) % this.docs.length;
+                if (prevIndex !== this.currentIndex) {
+                    this.fetchAndPrepareSlide(prevIndex);
+                }
+            }
+
+            renderContent() {
+                if (typeof hljs !== 'undefined') {
+                    this.slides[this.currentIndex].find('pre code').each((i, block) => {
+                        hljs.highlightElement(block);
+                    });
+                }
+
+                if (window.MathJax) {
+                    MathJax.typesetPromise([this.slides[this.currentIndex][0]])
+                        .catch((err) => console.log('Typeset failed: ' + err.message));
+                }
+            }
+
+            next() {
+                const nextIndex = (this.currentIndex + 1) % this.docs.length;
+                this.showSlide(nextIndex);
+            }
+
+            prev() {
+                const prevIndex = (this.currentIndex - 1 + this.docs.length) % this.docs.length;
+                this.showSlide(prevIndex);
+            }
+        }
+
+        $(document).ready(async () => {
+            const carousel = new PaperCarousel('#carousel-slides', docs);
+            await carousel.init();
+        });
+    </script>
 
 </body>
-
-<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-<script src="https://unpkg.com/flickity@2/dist/flickity.pkgd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.0/highlight.min.js"></script>
-<!-- marked.js -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<!-- MD content -->
-<script>
-    const docs = ["2601.10795.md", "2601.11127.md", "2601.11469.md"];
-    const slides = ["slide1", "slide2", "slide3"];
-
-    async function run() {
-        for (let i = 0; i < docs.length; i++) {
-            let file = await fetch(docs[i]);
-            let text = await file.text()
-            document.getElementById(slides[i]).innerHTML =
-                marked.parse(text);
-        }
-        hljs.highlightAll();
-    }
-    run()
-</script>
-<!-- Mathjax 3 -->
-<script type="text/javascript" id="MathJax-config" src="mathjax_config.js"> </script>
-<script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
-<!-- Mathjax 3 async promise refresh for dynamic text -->
-<script>
-    const asyncTypeset = document.querySelector('#asyncTypeset')
-    setTimeout(async function () {
-        await MathJax.typesetPromise().catch((err) => console.log('Typeset failed: ' + err.message));
-        console.log('refreshed MathJax typeset');
-    }, 3000)
-</script>
-
 </html>
